@@ -123,7 +123,7 @@ with sync_playwright() as p:
     def books_count(): return pg.evaluate("()=>new Promise(r=>{const q=indexedDB.open('lorsia');q.onsuccess=()=>{const t=q.result.transaction('books').objectStore('books').count();t.onsuccess=()=>{r(t.result);q.result.close()}}})")
     for i,msg in [(1,'تالف'),(2,'غير موجود'),(3,'ليس نسخة')]:
         pg.set_input_files('#bkFile', OUT+f'/bad{i}.json'); pg.wait_for_timeout(500)
-        check(f'T10 corrupt file {i} rejected', '❌' in pg.inner_text('#bkMsg') and not pg.is_visible('.modal-box'), pg.inner_text('#bkMsg'))
+        check(f'T10 corrupt file {i} rejected', pg.locator('#bkMsg .msg.bad').count()==1 and not pg.is_visible('.modal-box'), pg.inner_text('#bkMsg'))
     check('T10 data intact after bad imports', books_count()==1)
     # دمج: يجب أن يُنشئ نسخة
     pg.set_input_files('#bkFile', bk); pg.wait_for_selector('.modal-box'); pg.click('.modal-box .btn:has-text("دمج")'); pg.wait_for_timeout(800)

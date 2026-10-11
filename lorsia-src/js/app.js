@@ -8,10 +8,10 @@
   var DEFAULTS = {
     theme: 'modern', cols: 1, sort: 'updated',
     adv: { on: false, accent: '', hdr: '', dens: '', card: '', edSize: 19, edLh: 1.9 },
-    dash: { order: ['continue', 'stats', 'chapters', 'chars', 'ideas', 'activity'], hidden: [] }
+    dash: { order: ['continue', 'stats', 'chapters', 'chars', 'ideas', 'world', 'activity'], hidden: [] }
   };
   var S = JSON.parse(JSON.stringify(DEFAULTS));
-  var DASH_NAMES = { continue: 'متابعة الكتابة', stats: 'إحصاءات الكتاب', chapters: 'آخر الفصول المعدّلة', chars: 'آخر الشخصيات', ideas: 'أحدث الأفكار', activity: 'آخر النشاطات' };
+  var DASH_NAMES = { continue: 'متابعة الكتابة', stats: 'إحصاءات الكتاب', chapters: 'آخر الفصول المعدّلة', chars: 'آخر الشخصيات', ideas: 'أحدث الأفكار', world: 'عالم الرواية', activity: 'آخر النشاطات' };
 
   var I = {
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
@@ -30,8 +30,18 @@
     dots: '<circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/>',
     grid1: '<rect x="4" y="5" width="16" height="6" rx="1.5"/><rect x="4" y="13" width="16" height="6" rx="1.5"/>',
     grid2: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
-    close: '<path d="M6 6l12 12M18 6L6 18"/>'
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/>',
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    pen: '<path d="M4 20l1-4L16 5l3 3L8 19zM14 7l3 3"/>',
+    feather: '<path d="M20 4c-6 0-11 4-12 11l-3 5M8 15h6M20 4c0 6-3 10-8 11"/>',
+    book: '<path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2zM5 18a2 2 0 0 1 2-2h12M10 8h5"/>',
+    warn: '<path d="M12 4l9 16H3zM12 10v4M12 17v.01"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>'
   };
+  function hue(str) { var h = 0; str = String(str || ''); for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360; return h; }
+  function initial(str) { var t = String(str || '').trim(); return t ? Array.from(t)[0] : '؟'; }
+  function cover(title, cls) { return '<div class="cover ' + (cls || '') + '" style="--h:' + hue(title) + '" aria-hidden="true"><span class="ct">' + esc(title) + '</span><i class="orn"></i></div>'; }
   function ic(n, c) { return '<svg class="ic ' + (c || '') + '" viewBox="0 0 24 24" aria-hidden="true">' + I[n] + '</svg>'; }
 
   /* ---------- الإعدادات ---------- */
@@ -47,7 +57,11 @@
     S = JSON.parse(JSON.stringify(DEFAULTS));
     if (saved && typeof saved === 'object') mergeDeep(S, saved);
     var ord = (S.dash.order || []).filter(function (k) { return DEFAULTS.dash.order.indexOf(k) >= 0; });
-    DEFAULTS.dash.order.forEach(function (k) { if (ord.indexOf(k) < 0) ord.push(k); });
+    DEFAULTS.dash.order.forEach(function (k) {
+      if (ord.indexOf(k) >= 0) return;
+      var at = k === 'world' && ord.indexOf('ideas') >= 0 ? ord.indexOf('ideas') + 1 : ord.length; // قسم جديد يوضع بعد الأفكار
+      ord.splice(at, 0, k);
+    });
     S.dash.order = ord;
     U.applyTheme(S);
   }
@@ -62,6 +76,7 @@
   var Ed = null;
 
   /* ---------- التوجيه ---------- */
+  var helpKey = '';
   var lastHash = '#/', routing = Promise.resolve(), curBook = null;
 
   function parse() {
@@ -72,7 +87,7 @@
   window.addEventListener('hashchange', function () { routing = routing.then(route).catch(function (e) { console.error(e); showErr(e); }); });
 
   function showErr(e) {
-    viewEl.innerHTML = '<div class="empty"><div class="eico">⚠️</div><h3>حدث خطأ</h3><p>' + esc((e && e.message) || e) + '</p><a class="btn primary" href="#/">العودة للمكتبة</a></div>';
+    viewEl.innerHTML = '<div class="empty">' + ic('warn', 'big') + '<h3>حدث خطأ</h3><p>' + esc((e && e.message) || e) + '</p><a class="btn primary" href="#/">العودة للمكتبة</a></div>';
   }
 
   async function route() {
@@ -89,6 +104,8 @@
     closeDrawer();
     viewEl.onclick = viewEl.onchange = viewEl.oninput = null;
     var p = parse();
+    var HK = { home: 'dashboard', chapters: 'chapters', c: 'editor', chars: 'chars', ideas: 'ideas', world: 'world' };
+    helpKey = p[0] === 'b' ? (HK[p[2] || 'home'] || '') : (({ settings: 'settings', themes: 'themes', backup: 'backup' })[p[0]] || ((!p.length || p[0] === 'lib') ? 'library' : ''));
     window.scrollTo(0, 0);
     if (!p.length || p[0] === 'lib') return vLibrary();
     if (p[0] === 'settings') return vSettings();
@@ -115,7 +132,8 @@
     titleEl.textContent = o.title || 'لورسيا';
     backEl.hidden = !o.back;
     backEl.dataset.href = o.back || '';
-    document.getElementById('menuBtn').hidden = !!o.book;
+    document.getElementById('menuBtn').hidden = !!(o.book || o.back);
+    var hb = $('#helpBtn'); hb.hidden = !(helpKey && window.LHelp && LHelp.has(helpKey)); hb.dataset.help = helpKey;
     navEl.hidden = !o.book;
     document.body.classList.toggle('has-nav', !!o.book);
     if (o.book) {
@@ -130,48 +148,54 @@
   function openDrawer() { document.getElementById('drawer').classList.add('open'); }
   function closeDrawer() { document.getElementById('drawer').classList.remove('open'); }
 
-  /* ---------- المكتبة ---------- */
+    /* ---------- المكتبة ---------- */
+  async function createBookFlow() {
+    var t = await U.prompt('كتاب جديد', '', { label: 'عنوان الكتاب', ok: 'إنشاء' });
+    if (t == null) return;
+    try { var b = await DB.createBook(t); go('#/b/' + b.id + '/home'); } catch (e) { U.toast('تعذّر إنشاء الكتاب: ' + e.message, 'err'); }
+  }
+
   async function vLibrary() {
     setChrome({ title: 'لورسيا' });
     var books = await DB.all('books'), chs = await DB.all('chapters');
     var stat = {};
     chs.forEach(function (c) { var s = stat[c.bookId] || (stat[c.bookId] = { n: 0, w: 0 }); s.n++; s.w += c.words || 0; });
-    var q = '';
+    var q = '', first = true;
     viewEl.innerHTML =
-      '<div class="page"><div class="toolbar">' +
-      '<input id="q" type="search" placeholder="ابحث في كتبك…" dir="auto" autocomplete="off">' +
-      '<select id="sort" aria-label="الترتيب"><option value="updated">الأحدث تعديلاً</option><option value="title">الاسم</option><option value="created">الأحدث إنشاءً</option></select>' +
-      '<button class="icon-btn" id="colsBtn" aria-label="نمط العرض">' + ic(S.cols === 2 ? 'grid1' : 'grid2') + '</button></div>' +
-      '<div id="list"></div></div><button class="fab" id="newBook">' + ic('plus') + '<span>كتاب جديد</span></button>';
+      '<div class="page"><div class="lib-hero"><div><h2>مكتبتي</h2><p>' + (books.length ? U.num(books.length) + (books.length === 1 ? ' رواية' : ' روايات') : 'ابدأ روايتك الأولى') + '</p></div><span class="rule"></span></div>' +
+      '<div class="toolbar"><label class="searchbox">' + ic('search') + '<input id="q" type="search" placeholder="ابحث في كتبك…" dir="auto" autocomplete="off" aria-label="بحث في الكتب"></label>' +
+      '<select id="sort" aria-label="ترتيب الكتب"><option value="updated">الأحدث تعديلاً</option><option value="title">الاسم</option><option value="created">الأحدث إنشاءً</option></select>' +
+      '<button class="icon-btn" id="colsBtn" aria-label="تبديل نمط العرض بين بطاقة وبطاقتين" title="نمط العرض">' + ic(S.cols === 2 ? 'grid1' : 'grid2') + '</button></div>' +
+      '<div id="list"></div></div><button class="fab" id="newBook" aria-label="كتاب جديد">' + ic('plus') + '<span>كتاب جديد</span></button>';
     $('#sort').value = S.sort;
     function draw() {
       var list = books.filter(function (b) { return !q || b.title.toLowerCase().indexOf(q) >= 0; });
       list.sort(function (a, b) { return S.sort === 'title' ? a.title.localeCompare(b.title, 'ar') : (b[S.sort] || 0) - (a[S.sort] || 0); });
       var el = $('#list');
       if (!books.length) {
-        el.innerHTML = '<div class="empty"><div class="eico">📖</div><h3>مكتبتك فارغة</h3><p>ابدأ أول كتاب لك واكتب فيه عالمك.</p></div>';
+        el.className = '';
+        el.innerHTML = '<div class="empty">' + ic('book', 'big') + '<h3>مكتبتك فارغة</h3><p>ابدأ أول كتاب لك، واكتب عالمك فصلاً فصلاً.</p><button class="btn primary" id="newBookCta">' + ic('plus', 'sm') + 'كتاب جديد</button></div>';
+        $('#newBookCta').onclick = createBookFlow;
       } else if (!list.length) {
-        el.innerHTML = '<div class="empty"><div class="eico">🔍</div><h3>لا نتائج</h3><p>لا يوجد كتاب يطابق «' + esc(q) + '».</p></div>';
+        el.className = '';
+        el.innerHTML = '<div class="empty">' + ic('search', 'big') + '<h3>لا نتائج</h3><p>لا يوجد كتاب يطابق «' + esc(q) + '».</p></div>';
       } else {
-        el.className = 'cards c' + S.cols;
-        el.innerHTML = list.map(function (b) {
+        el.className = 'cards c' + S.cols + (first ? ' fresh' : '');
+        el.innerHTML = list.map(function (b, i) {
           var s = stat[b.id] || { n: 0, w: 0 };
-          return '<article class="card book" data-id="' + b.id + '"><div class="stripe"></div><div class="cb"><h3>' + esc(b.title) + '</h3>' +
-            '<div class="meta">' + U.num(s.n) + ' فصل · ' + U.num(s.w) + ' كلمة</div>' +
+          return '<article class="card book" data-id="' + b.id + '" style="--i:' + i + '">' + cover(b.title) +
+            '<div class="bi"><h3>' + esc(b.title) + '</h3><div class="chips2"><span class="tag">' + U.num(s.n) + ' فصل</span><span class="tag">' + U.num(s.w) + ' كلمة</span></div>' +
             '<div class="meta sm">آخر تعديل: ' + U.date(b.updated) + '</div></div>' +
-            '<button class="icon-btn more" data-more="' + b.id + '" aria-label="خيارات الكتاب">' + ic('dots') + '</button></article>';
+            '<button class="icon-btn more" data-more="' + b.id + '" aria-label="خيارات الكتاب ' + esc(b.title) + '">' + ic('dots') + '</button></article>';
         }).join('');
       }
+      first = false;
     }
     draw();
     $('#q').oninput = function (e) { q = e.target.value.trim().toLowerCase(); draw(); };
     $('#sort').onchange = function (e) { S.sort = e.target.value; saveSettings(); draw(); };
     $('#colsBtn').onclick = function () { S.cols = S.cols === 2 ? 1 : 2; saveSettings(); $('#colsBtn').innerHTML = ic(S.cols === 2 ? 'grid1' : 'grid2'); draw(); };
-    $('#newBook').onclick = async function () {
-      var t = await U.prompt('كتاب جديد', '', { label: 'عنوان الكتاب', ok: 'إنشاء' });
-      if (t == null) return;
-      try { var b = await DB.createBook(t); go('#/b/' + b.id + '/home'); } catch (e) { U.toast('تعذّر إنشاء الكتاب: ' + e.message, 'err'); }
-    };
+    $('#newBook').onclick = createBookFlow;
     $('#list').onclick = async function (e) {
       var more = e.target.closest('[data-more]');
       var card = e.target.closest('.book');
@@ -197,7 +221,7 @@
     };
   }
 
-  /* ---------- لوحة الكتاب ---------- */
+  /* ---------- لوحة الكتاب: جدار الملاحظات ---------- */
   async function vDash(book) {
     setChrome({ title: book.title, back: '#/', book: book, nav: 'home' });
     var r = await Promise.all([DB.byBook('chapters', book.id), DB.byBook('characters', book.id), DB.byBook('ideas', book.id), DB.byBook('items', book.id), DB.byBook('cats', book.id)]);
@@ -206,43 +230,68 @@
     function byUp(a) { return a.slice().sort(function (x, y) { return y.updated - x.updated; }); }
     var chUp = byUp(chs), last = chs.filter(function (c) { return c.id === book.lastChapterId; })[0] || chUp[0];
     var words = chs.reduce(function (a, c) { return a + (c.words || 0); }, 0);
-    var empty = function (t) { return '<div class="muted sm pad">' + t + '</div>'; };
-    var rowCh = function (c) { return '<a class="row" href="#/b/' + book.id + '/c/' + c.id + '"><div class="rt">' + esc(c.title) + '</div><div class="rs">' + U.num(c.words) + ' كلمة · ' + U.ago(c.updated) + '</div></a>'; };
+    var nil = function (t) { return '<div class="nil">' + t + '</div>'; };
+    var B = '#/b/' + book.id;
     var parts = {
-      continue: function () {
-        return '<section class="sec cont">' + (last
-          ? '<div class="rs">آخر فصل عملت عليه</div><h3>' + esc(last.title) + '</h3><div class="rs">' + U.num(last.words) + ' كلمة · ' + U.ago(last.updated) + '</div><a class="btn primary big" href="#/b/' + book.id + '/c/' + last.id + '">متابعة الكتابة</a>'
-          : '<h3>لا يوجد فصل بعد</h3><div class="rs">أنشئ أول فصل لتبدأ الكتابة.</div><a class="btn primary big" href="#/b/' + book.id + '/chapters" data-new="1">إنشاء فصل</a>') + '</section>';
+      continue: function (cls) {
+        return '<section class="cont ' + cls + '">' + (last
+          ? '<div class="eyebrow">آخر فصل عملت عليه</div><h3>' + esc(last.title) + '</h3><div class="rs">' + U.num(last.words) + ' كلمة · ' + U.ago(last.updated) + '</div><a class="btn primary big" href="' + B + '/c/' + last.id + '">' + ic('pen', 'sm') + 'متابعة الكتابة</a>'
+          : '<div class="eyebrow">ابدأ من هنا</div><h3>لا يوجد فصل بعد</h3><div class="rs">أنشئ أول فصل لتبدأ الكتابة.</div><a class="btn primary big" href="' + B + '/chapters" data-new="1">' + ic('pen', 'sm') + 'إنشاء فصل</a>') + '</section>';
       },
-      stats: function () {
-        return '<section class="sec stats"><div><b>' + U.num(chs.length) + '</b><span>فصل</span></div><div><b>' + U.num(words) + '</b><span>كلمة</span></div><div><b>' + U.num(chars.length) + '</b><span>شخصية</span></div><div><b>' + U.num(ideas.length) + '</b><span>فكرة</span></div></section>';
+      stats: function (cls) {
+        return '<section class="sec stats ' + cls + '"><div><b>' + U.num(chs.length) + '</b><span>فصل</span></div><div><b>' + U.num(words) + '</b><span>كلمة</span></div><div><b>' + U.num(chars.length) + '</b><span>شخصية</span></div><div><b>' + U.num(ideas.length) + '</b><span>فكرة</span></div></section>';
       },
-      chapters: function () {
-        return '<section class="sec"><h4>آخر الفصول المعدّلة</h4>' + (chUp.length ? chUp.slice(0, 3).map(rowCh).join('') : empty('لا توجد فصول.')) + '</section>';
+      chapters: function (cls) {
+        return '<section class="sheets ' + cls + '"><h4>آخر الفصول المعدّلة</h4>' + (chUp.length ? chUp.slice(0, 3).map(function (c) {
+          return '<a class="sheet-row" href="' + B + '/c/' + c.id + '"><span class="sn">' + c.order + '</span><div class="grow"><div class="rt">' + esc(c.title) + '</div><div class="rs">' + U.num(c.words) + ' كلمة · ' + U.ago(c.updated) + '</div></div></a>';
+        }).join('') : nil('لا توجد فصول.')) + '</section>';
       },
-      chars: function () {
+      chars: function (cls) {
         var l = byUp(chars).slice(0, 3);
-        return '<section class="sec"><h4>آخر الشخصيات</h4>' + (l.length ? l.map(function (c) { return '<a class="row" href="#/b/' + book.id + '/chars/' + c.id + '"><div class="rt">' + esc(c.name) + '</div><div class="rs">' + esc(c.role || '') + ' ' + U.ago(c.updated) + '</div></a>'; }).join('') : empty('لم تُضف شخصيات بعد.')) + '</section>';
+        return '<section class="note chars ' + cls + '"><h4>الشخصيات</h4>' + (l.length ? l.map(function (c) {
+          return '<a class="nrow hasav" href="' + B + '/chars/' + c.id + '"><span class="avatar" style="--h:' + hue(c.name) + '" aria-hidden="true">' + esc(initial(c.name)) + '</span><div><div class="rt">' + esc(c.name) + '</div><div class="rs">' + esc(c.role || '') + ' ' + U.ago(c.updated) + '</div></div></a>';
+        }).join('') : nil('لم تُضف شخصيات بعد.')) + '</section>';
       },
-      ideas: function () {
+      ideas: function (cls) {
         var l = byUp(ideas).slice(0, 3);
-        return '<section class="sec"><h4>أحدث الأفكار</h4>' + (l.length ? l.map(function (c) { return '<a class="row" href="#/b/' + book.id + '/ideas/' + c.id + '"><div class="rt">' + esc(c.title) + '</div><div class="rs">' + U.ago(c.updated) + '</div></a>'; }).join('') : empty('لم تُسجَّل أفكار بعد.')) + '</section>';
+        return '<section class="note ideas ' + cls + '"><h4>الأفكار</h4>' + (l.length ? l.map(function (c) {
+          return '<a class="nrow" href="' + B + '/ideas/' + c.id + '"><div class="rt">' + esc(c.title) + '</div><div class="rs">' + U.ago(c.updated) + '</div></a>';
+        }).join('') : nil('لم تُسجَّل أفكار بعد.')) + '</section>';
       },
-      activity: function () {
+      world: function (cls) {
+        var l = byUp(items).slice(0, 3);
+        return '<section class="note world ' + cls + '"><h4>عالم الرواية</h4>' + (l.length ? l.map(function (c) {
+          return '<a class="nrow" href="' + B + '/world/' + c.catId + '/' + c.id + '"><div class="rt">' + esc(c.name) + '</div><div class="rs">' + esc(catName[c.catId] || '') + ' · ' + U.ago(c.updated) + '</div></a>';
+        }).join('') : nil('لا عناصر في عالم الرواية بعد.')) + '</section>';
+      },
+      activity: function (cls) {
         var all = [].concat(
-          chs.map(function (c) { return { t: 'فصل', n: c.title, u: c.updated, h: '#/b/' + book.id + '/c/' + c.id }; }),
-          chars.map(function (c) { return { t: 'شخصية', n: c.name, u: c.updated, h: '#/b/' + book.id + '/chars/' + c.id }; }),
-          ideas.map(function (c) { return { t: 'فكرة', n: c.title, u: c.updated, h: '#/b/' + book.id + '/ideas/' + c.id }; }),
-          items.map(function (c) { return { t: 'عالم · ' + (catName[c.catId] || ''), n: c.name, u: c.updated, h: '#/b/' + book.id + '/world/' + c.catId + '/' + c.id }; })
+          chs.map(function (c) { return { t: 'فصل', n: c.title, u: c.updated, h: B + '/c/' + c.id }; }),
+          chars.map(function (c) { return { t: 'شخصية', n: c.name, u: c.updated, h: B + '/chars/' + c.id }; }),
+          ideas.map(function (c) { return { t: 'فكرة', n: c.title, u: c.updated, h: B + '/ideas/' + c.id }; }),
+          items.map(function (c) { return { t: 'عالم · ' + (catName[c.catId] || ''), n: c.name, u: c.updated, h: B + '/world/' + c.catId + '/' + c.id }; })
         ).sort(function (a, b) { return b.u - a.u; }).slice(0, 8);
-        return '<section class="sec"><h4>آخر النشاطات</h4>' + (all.length ? all.map(function (a) { return '<a class="row" href="' + a.h + '"><div class="rt">' + esc(a.n) + '</div><div class="rs">' + esc(a.t) + ' · ' + U.ago(a.u) + '</div></a>'; }).join('') : empty('لا نشاط بعد.')) + '</section>';
+        return '<section class="note activity ' + cls + '"><h4>آخر النشاطات</h4>' + (all.length ? all.map(function (a) {
+          return '<a class="nrow" href="' + a.h + '"><div class="rt">' + esc(a.n) + '</div><div class="rs">' + esc(a.t) + ' · ' + U.ago(a.u) + '</div></a>';
+        }).join('') : nil('لا نشاط بعد.')) + '</section>';
       }
     };
-    viewEl.innerHTML = '<div class="page dash">' + S.dash.order.filter(function (k) { return S.dash.hidden.indexOf(k) < 0 && parts[k]; }).map(function (k) { return parts[k](); }).join('') + '</div>';
+    var HALF = { chars: 1, ideas: 1, world: 1 };
+    var vis = S.dash.order.filter(function (k) { return S.dash.hidden.indexOf(k) < 0 && parts[k]; });
+    var cls = {}, i = 0;
+    while (i < vis.length) {
+      if (HALF[vis[i]] && i + 1 < vis.length && HALF[vis[i + 1]]) { cls[vis[i]] = cls[vis[i + 1]] = 'half'; i += 2; }
+      else { cls[vis[i]] = 'full'; i += 1; }
+    }
+    var head = '<header class="manu full">' + cover(book.title, 'sm') + '<div class="mi"><h2>' + esc(book.title) + '</h2><p>آخر تعديل ' + U.ago(book.updated) + ' · ' + U.num(chs.length) + ' فصل</p></div></header>';
+    var html = head + vis.map(function (k) { return parts[k](cls[k]); }).join('');
+    // فهرس الظهور المتدرّج
+    var n = 0; html = html.replace(/<(section|header) class="/g, function (m, t) { return '<' + t + ' style="--i:' + (n++) + '" class="'; });
+    viewEl.innerHTML = '<div class="page dash"><div class="wall fresh">' + html + '</div></div>';
     var nb = $('[data-new]'); if (nb) nb.onclick = function (e) { e.preventDefault(); newChapter(book, true); };
   }
 
-  /* ---------- الفصول ---------- */
+/* ---------- الفصول ---------- */
   async function newChapter(book, open) {
     var chs = await DB.byBook('chapters', book.id);
     var t = await U.prompt('فصل جديد', 'الفصل ' + (chs.length + 1), { label: 'عنوان الفصل', ok: 'إنشاء' });
@@ -256,12 +305,14 @@
   async function vChapters(book) {
     setChrome({ title: book.title, back: '#/', book: book, nav: 'chapters' });
     var chs = (await DB.byBook('chapters', book.id)).sort(function (a, b) { return a.order - b.order; });
-    viewEl.innerHTML = '<div class="page"><div class="toolbar"><h2 class="grow">الفصول <small>(' + chs.length + ')</small></h2></div><div id="list" class="stack"></div></div><button class="fab" id="newCh">' + ic('plus') + '<span>فصل جديد</span></button>';
+    var maxW = chs.reduce(function (m, c) { return Math.max(m, c.words || 0); }, 0) || 1;
+    viewEl.innerHTML = '<div class="page"><div class="toolbar"><h2 class="grow">الفصول <small>(' + chs.length + ')</small></h2></div><div id="list" class="stack fresh"></div></div><button class="fab" id="newCh" aria-label="فصل جديد">' + ic('plus') + '<span>فصل جديد</span></button>';
     var el = $('#list');
-    if (!chs.length) el.innerHTML = '<div class="empty"><div class="eico">✍️</div><h3>لا توجد فصول</h3><p>أنشئ أول فصل وابدأ الكتابة.</p></div>';
+    if (!chs.length) { el.className = 'stack'; el.innerHTML = '<div class="empty">' + ic('feather', 'big') + '<h3>لا توجد فصول</h3><p>أنشئ أول فصل وابدأ الكتابة.</p></div>'; }
     else el.innerHTML = chs.map(function (c, i) {
-      return '<article class="card chap" data-id="' + c.id + '"><a class="cb" href="#/b/' + book.id + '/c/' + c.id + '"><div class="num">' + (i + 1) + '</div><div class="grow"><h3>' + esc(c.title) + '</h3><div class="meta sm">' + U.num(c.words) + ' كلمة · ' + U.date(c.updated) + '</div></div></a>' +
-        '<div class="acts"><button class="icon-btn" data-a="up" ' + (i === 0 ? 'disabled' : '') + ' aria-label="تحريك للأعلى">' + ic('up') + '</button><button class="icon-btn" data-a="down" ' + (i === chs.length - 1 ? 'disabled' : '') + ' aria-label="تحريك للأسفل">' + ic('down') + '</button><button class="icon-btn" data-a="ren" aria-label="إعادة تسمية">' + ic('edit') + '</button><button class="icon-btn danger" data-a="del" aria-label="حذف">' + ic('trash') + '</button></div></article>';
+      var w = c.words || 0, pct = w ? Math.max(3, Math.round(w / maxW * 100)) : 0;
+      return '<article class="card chap" data-id="' + c.id + '" style="--i:' + i + '"><a class="cb" href="#/b/' + book.id + '/c/' + c.id + '"><div class="num">' + (i + 1) + '</div><div class="grow"><h3>' + esc(c.title) + '</h3><div class="meta sm">' + U.num(w) + ' كلمة · ' + U.date(c.updated) + '</div><div class="bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div></div></a>' +
+        '<div class="acts"><button class="icon-btn" data-a="up" ' + (i === 0 ? 'disabled' : '') + ' aria-label="تحريك للأعلى" title="للأعلى">' + ic('up') + '</button><button class="icon-btn" data-a="down" ' + (i === chs.length - 1 ? 'disabled' : '') + ' aria-label="تحريك للأسفل" title="للأسفل">' + ic('down') + '</button><button class="icon-btn" data-a="ren" aria-label="إعادة تسمية" title="إعادة تسمية">' + ic('edit') + '</button><button class="icon-btn danger" data-a="del" aria-label="حذف" title="حذف">' + ic('trash') + '</button></div></article>';
     }).join('');
     $('#newCh').onclick = function () { newChapter(book); };
     el.onclick = async function (e) {
@@ -292,11 +343,11 @@
     document.body.classList.add('in-editor');
     viewEl.innerHTML =
       '<div class="editor"><div class="etools"><span id="st" class="st saved">تم الحفظ</span><span id="wc" class="wc"></span><span class="grow"></span>' +
-      '<button class="icon-btn" id="notesBtn" aria-label="ملاحظات الفصل">' + ic('note') + '</button>' +
-      '<button class="icon-btn" id="focusBtn" aria-label="وضع بلا مشتتات">' + ic('focus') + '</button>' +
-      '<button class="icon-btn" id="expBtn" aria-label="تصدير الفصل">' + ic('exp') + '</button></div>' +
+      '<button class="icon-btn" id="notesBtn" aria-label="ملاحظات الفصل" title="ملاحظات الفصل">' + ic('note') + '</button>' +
+      '<button class="icon-btn" id="focusBtn" aria-label="وضع بلا مشتتات" title="وضع بلا مشتتات">' + ic('focus') + '</button>' +
+      '<button class="icon-btn" id="expBtn" aria-label="تصدير الفصل" title="تصدير الفصل">' + ic('exp') + '</button></div>' +
       '<textarea id="ta" class="paper" spellcheck="true" placeholder="ابدأ الكتابة هنا…" aria-label="نص الفصل"></textarea></div>' +
-      '<div id="notesSheet" class="sheet" hidden><div class="sheet-h"><b>ملاحظات: <span id="nTitle"></span></b><button class="icon-btn" id="nClose" aria-label="إغلاق">' + ic('close') + '</button></div>' +
+      '<div id="notesSheet" class="sheet" hidden><div class="sheet-h"><b>ملاحظات: <span id="nTitle"></span></b><button class="icon-btn" data-help="notes" aria-label="مساعدة ملاحظات الفصل" title="مساعدة">' + ic('info') + '</button><button class="icon-btn" id="nClose" aria-label="إغلاق الملاحظات" title="إغلاق">' + ic('close') + '</button></div>' +
       '<textarea id="nta" dir="auto" placeholder="ملاحظات هذا الفصل فقط…"></textarea></div>' +
       '<button id="unfocus" class="unfocus" hidden aria-label="استعادة الواجهة">' + ic('focus') + '</button>';
     var ta = $('#ta'), nta = $('#nta'), st = $('#st'), wc = $('#wc');
@@ -310,6 +361,7 @@
     function setState(s) {
       E.state = s;
       st.className = 'st ' + s;
+      if (s === 'saved') { void st.offsetWidth; st.classList.add('pop'); }
       st.textContent = s === 'saving' ? 'جارٍ الحفظ…' : s === 'saved' ? 'تم الحفظ' : s === 'error' ? 'تعذّر الحفظ' : 'غير محفوظ';
     }
     function doSave() {
@@ -376,23 +428,30 @@
       U.toast('جارٍ إنشاء الملف…');
       try {
         var r = await X.run(f, { title: title }, E.text);
-        if (r.ok) U.toast('تم تصدير الملف' + (r.where ? ' ✔' : ''));
+        if (r.ok) U.toast('تم تصدير الملف');
       } catch (er) { U.toast('تعذّر التصدير: ' + (er && er.message || er), 'err'); }
     };
   }
 
   /* ---------- أدوات القوائم الموحّدة (شخصيات/أفكار/عناصر) ---------- */
+  var POP = null; // معرّف آخر سجل أُضيف لتمييزه بوميض خفيف
   function listPage(o) {
-    // o: {title, items, render(i), search(i) -> string, sorts, onAdd, onOpen(i), empty}
-    var q = '', sortK = 'updated';
-    viewEl.innerHTML = '<div class="page">' + (o.head || '') + '<div class="toolbar"><input id="q" type="search" placeholder="بحث…" dir="auto" autocomplete="off"><select id="sort"><option value="updated">الأحدث تعديلاً</option><option value="name">الاسم</option></select></div><div id="list" class="stack"></div></div><button class="fab" id="add">' + ic('plus') + '<span>' + o.addLabel + '</span></button>';
+    // o: {head, items, render(i), search(i), name(i), onAdd, onOpen(i), addLabel, eico, empty, emptyHint, cls, cardCls}
+    var q = '', sortK = 'updated', first = true;
+    viewEl.innerHTML = '<div class="page">' + (o.head || '') + '<div class="toolbar"><label class="searchbox">' + ic('search') + '<input id="q" type="search" placeholder="بحث…" dir="auto" autocomplete="off" aria-label="بحث"></label><select id="sort" aria-label="الترتيب"><option value="updated">الأحدث تعديلاً</option><option value="name">الاسم</option></select></div><div id="list" class="stack"></div></div><button class="fab" id="add">' + ic('plus') + '<span>' + o.addLabel + '</span></button>';
     function draw() {
       var l = o.items.filter(function (i) { return !q || (o.search(i)).toLowerCase().indexOf(q) >= 0; });
       l.sort(function (a, b) { return sortK === 'name' ? o.name(a).localeCompare(o.name(b), 'ar') : b.updated - a.updated; });
       var el = $('#list');
-      if (!o.items.length) el.innerHTML = '<div class="empty"><div class="eico">' + o.eico + '</div><h3>' + o.empty + '</h3><p>' + o.emptyHint + '</p></div>';
-      else if (!l.length) el.innerHTML = '<div class="empty"><div class="eico">🔍</div><h3>لا نتائج</h3><p>لا شيء يطابق «' + esc(q) + '».</p></div>';
-      else el.innerHTML = l.map(function (i) { return '<article class="card rec" data-id="' + i.id + '">' + o.render(i) + '</article>'; }).join('');
+      el.className = 'stack';
+      if (!o.items.length) el.innerHTML = '<div class="empty">' + ic(o.eico, 'big') + '<h3>' + o.empty + '</h3><p>' + o.emptyHint + '</p></div>';
+      else if (!l.length) el.innerHTML = '<div class="empty">' + ic('search', 'big') + '<h3>لا نتائج</h3><p>لا شيء يطابق «' + esc(q) + '».</p></div>';
+      else {
+        el.className = 'stack ' + (o.cls || '') + (first ? ' fresh' : '');
+        el.innerHTML = l.map(function (i, n) { return '<article class="card rec ' + (o.cardCls || '') + (POP === i.id ? ' pop' : '') + '" data-id="' + i.id + '" style="--i:' + n + '">' + o.render(i) + '</article>'; }).join('');
+        if (POP && l.some(function (i) { return i.id === POP; })) POP = null;
+      }
+      first = false;
     }
     draw();
     $('#q').oninput = function (e) { q = e.target.value.trim().toLowerCase(); draw(); };
@@ -413,7 +472,9 @@
         await DB.delRec(store, rec); U.toast('تم الحذف');
       } else {
         var r = Object.assign({ bookId: book.id }, rec || {}, v);
-        await DB.saveRec(store, r); U.toast('تم الحفظ');
+        var saved = await DB.saveRec(store, r);
+        if (isNew && saved) POP = saved.id;
+        U.toast('تم الحفظ');
       }
     } catch (e) { U.toast('تعذّر الحفظ: ' + e.message, 'err'); }
     after();
@@ -426,10 +487,13 @@
     var items = await DB.byBook('characters', book.id);
     var again = function () { history.replaceState(null, '', '#/b/' + book.id + '/chars'); vChars(book); };
     listPage({
-      items: items, addLabel: 'شخصية جديدة', eico: '🧑‍🎤', empty: 'لا توجد شخصيات', emptyHint: 'أضف شخصيات روايتك لتبقى معك دائماً.',
+      items: items, addLabel: 'شخصية جديدة', eico: 'user', empty: 'لا توجد شخصيات', emptyHint: 'أضف شخصيات روايتك لتبقى معك دائماً.', cls: 'grid', cardCls: 'char',
       name: function (i) { return i.name; },
       search: function (i) { return [i.name, i.role, i.desc, i.traits].join(' '); },
-      render: function (i) { return '<div class="cb"><h3>' + esc(i.name) + (i.role ? ' <small>· ' + esc(i.role) + '</small>' : '') + '</h3><div class="meta">' + esc(snip(i.desc, 110)) + '</div></div>'; },
+      render: function (i) {
+        return '<div class="cb"><span class="avatar" style="--h:' + hue(i.name) + '" aria-hidden="true">' + esc(initial(i.name)) + '</span><div class="grow"><h3>' + esc(i.name) + (i.role ? ' <span class="tag">' + esc(i.role) + '</span>' : '') + '</h3>' +
+          (i.age ? '<div class="meta sm">العمر: ' + esc(i.age) + '</div>' : '') + '<div class="snip">' + esc(snip(i.desc, 110)) + '</div></div></div>';
+      },
       onAdd: function () { crud('characters', book, null, CHAR_F, 'شخصية', again); },
       onOpen: function (i) { crud('characters', book, i, CHAR_F, 'الشخصية', again); }
     });
@@ -443,10 +507,10 @@
     var items = await DB.byBook('ideas', book.id);
     var again = function () { history.replaceState(null, '', '#/b/' + book.id + '/ideas'); vIdeas(book); };
     listPage({
-      items: items, addLabel: 'فكرة جديدة', eico: '💡', empty: 'لا توجد أفكار', emptyHint: 'دوّن كل فكرة تخطر لك عن الرواية.',
+      items: items, addLabel: 'فكرة جديدة', eico: 'idea', empty: 'لا توجد أفكار', emptyHint: 'دوّن كل فكرة تخطر لك عن الرواية.', cls: 'frags', cardCls: 'frag',
       name: function (i) { return i.title; },
       search: function (i) { return i.title + ' ' + i.text; },
-      render: function (i) { return '<div class="cb"><h3>' + esc(i.title) + '</h3><div class="meta">' + esc(snip(i.text, 120)) + '</div><div class="meta sm">' + U.ago(i.updated) + '</div></div>'; },
+      render: function (i) { return '<div class="cb"><h3>' + esc(i.title) + '</h3><div class="snip">' + esc(snip(i.text, 140)) + '</div><div class="meta sm">' + U.ago(i.updated) + '</div></div>'; },
       onAdd: function () { crud('ideas', book, null, IDEA_F, 'فكرة', again); },
       onOpen: function (i) { crud('ideas', book, i, IDEA_F, 'الفكرة', again); }
     });
@@ -468,7 +532,7 @@
       '<button class="chip add" id="addCat">+ تصنيف</button></div>' +
       (cur ? '<div class="cathead"><b>' + esc(cur.name) + '</b><span class="grow"></span><button class="btn sm" id="renCat">إعادة تسمية</button><button class="btn sm danger" id="delCat">حذف التصنيف</button></div>' : '');
     var shown = cur ? items.filter(function (i) { return i.catId === cur.id; }) : items;
-    var form = function (it) {
+    var form = function () {
       return [{ k: 'catId', label: 'التصنيف', type: 'select', options: cats.map(function (c) { return { v: c.id, l: c.name }; }) }, { k: 'name', label: 'الاسم', req: true }, { k: 'desc', label: 'الوصف', type: 'area', rows: 7 }];
     };
     async function addItem(it) {
@@ -477,11 +541,14 @@
       await crud('items', book, it, form(), it ? 'العنصر' : 'عنصر', again, vals);
     }
     listPage({
-      head: chips, items: shown, addLabel: 'عنصر جديد', eico: '🌍', empty: cur ? 'لا عناصر في هذا التصنيف' : (cats.length ? 'لا عناصر بعد' : 'ابدأ ببناء عالمك'),
+      head: chips, items: shown, addLabel: 'عنصر جديد', eico: 'world', cardCls: 'lore', empty: cur ? 'لا عناصر في هذا التصنيف' : (cats.length ? 'لا عناصر بعد' : 'ابدأ ببناء عالمك'),
       emptyHint: cats.length ? 'أضف عنصراً إلى التصنيف.' : 'أنشئ تصنيفاً (أماكن، قوانين، مصطلحات…) ثم أضف عناصره.',
       name: function (i) { return i.name; },
       search: function (i) { return i.name + ' ' + i.desc; },
-      render: function (i) { return '<div class="cb"><h3>' + esc(i.name) + (!cur && catOf[i.catId] ? ' <small>· ' + esc(catOf[i.catId].name) + '</small>' : '') + '</h3><div class="meta">' + esc(snip(i.desc, 110)) + '</div></div>'; },
+      render: function (i) {
+        var cn = (catOf[i.catId] && catOf[i.catId].name) || '';
+        return '<div class="cb"><span class="seal" style="--h:' + hue(cn) + '" aria-hidden="true">' + esc(initial(cn || i.name)) + '</span><div class="grow"><h3>' + esc(i.name) + (!cur && cn ? ' <small>· ' + esc(cn) + '</small>' : '') + '</h3><div class="meta">' + esc(snip(i.desc, 110)) + '</div></div></div>';
+      },
       onAdd: function () { addItem(null); },
       onOpen: function (i) { addItem(i); }
     });
@@ -549,7 +616,7 @@
     function sw(c) { return '<button class="swatch ' + ((a.accent || U.THEMES[S.theme].accent).toLowerCase() === c.toLowerCase() ? 'on' : '') + '" data-c="' + c + '" style="background:' + c + '" aria-label="لون ' + c + '"></button>'; }
     function opt(k, vals) { return '<div class="seg" data-k="' + k + '">' + vals.map(function (v) { return '<button class="' + ((a[k] || '') === v[0] ? 'on' : '') + '" data-v="' + v[0] + '">' + v[1] + '</button>'; }).join('') + '</div>'; }
     viewEl.innerHTML = '<div class="page narrow"><section class="sec"><h4>اختر ثيماً</h4><div class="themes">' +
-      Object.keys(U.THEMES).map(function (k) { var t = U.THEMES[k]; return '<button class="tcard th-' + k + ' ' + (S.theme === k ? 'on' : '') + '" data-t="' + k + '"><div class="tprev"><i></i><i></i><i></i></div><b>' + t.name + '</b><small>' + t.desc + '</small></button>'; }).join('') + '</div></section>' +
+      Object.keys(U.THEMES).map(function (k) { var t = U.THEMES[k]; return '<button class="tcard th-' + k + ' ' + (S.theme === k ? 'on' : '') + '" data-t="' + k + '"><div class="tprev"><span class="bar1"></span><div class="pg"><i class="ln"></i><i class="ln"></i><i class="ln"></i></div><span class="btnp"></span></div><b>' + t.name + '</b><small>' + t.desc + '</small></button>'; }).join('') + '</div></section>' +
       '<section class="sec"><label class="switch"><input type="checkbox" id="advOn" ' + (a.on ? 'checked' : '') + '><span>الإعدادات المتقدمة للثيم</span></label>' +
       '<div id="advBox" ' + (a.on ? '' : 'hidden') + '>' +
       '<div class="fld"><span>لون التمييز</span><div class="swatches">' + U.THEMES[S.theme].swatches.map(sw).join('') + '<input type="color" id="accCustom" value="' + (a.accent || U.THEMES[S.theme].accent) + '" aria-label="لون مخصص"></div></div>' +
@@ -606,11 +673,12 @@
     $('#bkFile').onchange = async function (e) {
       var f = e.target.files && e.target.files[0]; if (!f) return;
       e.target.value = '';
-      var msg = $('#bkMsg'); msg.textContent = '';
+      var msg = $('#bkMsg'); msg.innerHTML = '';
+      function say(kind, html) { msg.innerHTML = '<div class="msg ' + kind + '">' + ic(kind === 'bad' ? 'warn' : 'check', 'sm') + '<div>' + html + '</div></div>'; }
       var data;
-      try { data = JSON.parse(await f.text()); } catch (er) { msg.textContent = '❌ الملف تالف أو ليس JSON صالحاً. لم يتغيّر شيء.'; return U.toast('الملف تالف', 'err'); }
+      try { data = JSON.parse(await f.text()); } catch (er) { say('bad', 'الملف تالف أو ليس JSON صالحاً. لم يتغيّر شيء.'); return U.toast('الملف تالف', 'err'); }
       var errs = DB.validateBackup(data);
-      if (errs.length) { msg.innerHTML = '❌ تعذّر الاستيراد، لم يتغيّر شيء:<br>' + errs.map(esc).join('<br>'); return U.toast('ملف النسخة غير صالح', 'err'); }
+      if (errs.length) { say('bad', 'تعذّر الاستيراد، لم يتغيّر شيء:<br>' + errs.map(esc).join('<br>')); return U.toast('ملف النسخة غير صالح', 'err'); }
       var sum = data.books.length + ' كتاب، ' + data.chapters.length + ' فصل، ' + data.characters.length + ' شخصية، ' + data.ideas.length + ' فكرة، ' + data.items.length + ' عنصر عالم';
       var mode = await U.choice('استيراد النسخة', 'الملف سليم ويحتوي: ' + sum + '. كيف تريد الاستيراد؟', [
         { v: 'merge', label: 'دمج مع بياناتي الحالية (آمن)', cls: 'primary' },
@@ -620,9 +688,9 @@
       try {
         var rep = await DB.importBackup(data, mode);
         if (mode === 'replace') await loadSettings();
-        msg.textContent = '✔ تم الاستيراد: ' + rep.books + ' كتاب' + (rep.copies ? ' (منها ' + rep.copies + ' نسخة جديدة لأن معرّفها موجود)' : '') + '.';
+        say('good', 'تم الاستيراد: ' + rep.books + ' كتاب' + (rep.copies ? ' (منها ' + rep.copies + ' نسخة جديدة لأن معرّفها موجود)' : '') + '.');
         U.toast('تم الاستيراد بنجاح');
-      } catch (er) { msg.textContent = '❌ فشل الاستيراد وأُلغيت العملية كاملة (لم تتغير بياناتك): ' + (er && er.message || er); U.toast('فشل الاستيراد', 'err'); }
+      } catch (er) { say('bad', 'فشل الاستيراد وأُلغيت العملية كاملة (لم تتغير بياناتك): ' + esc(er && er.message || er)); U.toast('فشل الاستيراد', 'err'); }
     };
   }
 
@@ -638,11 +706,12 @@
     viewEl = $('#view'); topEl = $('#top'); navEl = $('#booknav'); titleEl = $('#title'); backEl = $('#backBtn');
     backEl.onclick = function () { var h = backEl.dataset.href; if (h) go(h); };
     $('#menuBtn').onclick = openDrawer;
+    document.addEventListener('click', function (e) { var h = e.target.closest('[data-help]'); if (h && h.dataset.help) window.LHelp.open(h.dataset.help); });
     $('#drawer').onclick = function (e) { if (e.target.id === 'drawer' || e.target.closest('a')) closeDrawer(); };
     try {
       await DB.open();
     } catch (e) {
-      viewEl.innerHTML = '<div class="empty"><div class="eico">⚠️</div><h3>تعذّر فتح التخزين المحلي</h3><p>' + esc(e.message || e) + '</p><p>لن تُحفظ أي بيانات حتى يعمل التخزين.</p></div>';
+      viewEl.innerHTML = '<div class="empty">' + ic('warn', 'big') + '<h3>تعذّر فتح التخزين المحلي</h3><p>' + esc(e.message || e) + '</p><p>لن تُحفظ أي بيانات حتى يعمل التخزين.</p></div>';
       return;
     }
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* */ }

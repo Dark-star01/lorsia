@@ -137,21 +137,30 @@
 
   /* ---------- الثيمات ---------- */
   U.THEMES = {
-    modern: { name: 'عصري', desc: 'نظيف وحديث بورق أبيض', accent: '#2f6fed', swatches: ['#2f6fed', '#0f9d8a', '#8a4fff', '#e0534a'] },
+    modern: { name: 'عصري', desc: 'نظيف وحديث بورق أبيض', accent: '#2f6fed', swatches: ['#2f6fed', '#0b7f70', '#7a3fe8', '#c63a31'] },
     library: { name: 'مكتبة', desc: 'ورق عاجي كدفاتر الكتب', accent: '#8a5a2b', swatches: ['#8a5a2b', '#9c3d3d', '#3f6b4f', '#4d5b8c'] },
-    snow: { name: 'ثلج', desc: 'أبيض جليدي بلمسة شتوية', accent: '#3b8fd6', swatches: ['#3b8fd6', '#5a7fbf', '#2aa7b8', '#7a6ad8'] },
+    snow: { name: 'ثلج', desc: 'أبيض جليدي بلمسة شتوية', accent: '#2478bd', swatches: ['#2478bd', '#4a6fb0', '#1f8f9e', '#6a5ac8'] },
     night: { name: 'ليل', desc: 'داكن مريح للعين', accent: '#8ab4ff', swatches: ['#8ab4ff', '#c4a3ff', '#7fd6b5', '#ffb27a'] }
   };
   U.applyTheme = function (S) {
     var r = document.documentElement;
     var t = U.THEMES[S.theme] ? S.theme : 'modern';
+    if (r.getAttribute('data-theme') && r.getAttribute('data-theme') !== t) {
+      r.classList.add('theme-anim'); clearTimeout(U._ta); U._ta = setTimeout(function () { r.classList.remove('theme-anim'); }, 420);
+    }
     r.setAttribute('data-theme', t);
     var a = S.adv || {};
     var on = !!a.on;
-    ['--accent', '--ed-size', '--ed-lh'].forEach(function (p) { r.style.removeProperty(p); });
+    ['--accent', '--on-accent', '--ed-size', '--ed-lh'].forEach(function (p) { r.style.removeProperty(p); });
     r.removeAttribute('data-hdr'); r.removeAttribute('data-dens'); r.removeAttribute('data-card');
     if (on) {
-      if (a.accent && /^#[0-9a-f]{6}$/i.test(a.accent)) r.style.setProperty('--accent', a.accent);
+      if (a.accent && /^#[0-9a-f]{6}$/i.test(a.accent)) {
+        r.style.setProperty('--accent', a.accent);
+        // لون نص الأزرار يُحسب تلقائياً ليبقى مقروءاً مهما كان لون التمييز المختار
+        var n = parseInt(a.accent.slice(1), 16), lin = function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+        var L = 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+        r.style.setProperty('--on-accent', L > 0.4 ? '#101521' : '#ffffff');
+      }
       if (a.edSize) r.style.setProperty('--ed-size', a.edSize + 'px');
       if (a.edLh) r.style.setProperty('--ed-lh', a.edLh);
       if (a.hdr) r.setAttribute('data-hdr', a.hdr);
