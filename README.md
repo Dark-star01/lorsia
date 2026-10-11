@@ -48,5 +48,9 @@ examples/          أمثلة جاهزة (لا تُطبَّق تلقائياً،
 ## شاشة البداية
 `splash/splash.js` ملف واحد يقرأ الإعدادات من `config.json` (`duration`, `backgroundColor`, `textColor`, `accentColor`, `subtitle`, `footer`, `logoFile`). ضع `splash/logo.png` (يفضّل 512×512) وإلا يظهر أول حرف من الاسم.
 
+## ميزتان خاصتان بلورسيا
+- **خط التطبيق**: إعداد واحد عام، وتفاصيل الخطوط والتراخيص في `FONTS.md`.
+- **أيقونة المشغّل حسب الثيم**: `LAUNCHER_ICONS.md` (قائمة ملفات PNG المطلوبة ومساراتها). تبقى معطّلة تلقائياً حتى تضع الـPNG في `native/android/app/src/main/res/mipmap-*/`، عبر `hooks/pre-build.sh`.
+
 ## عند الفشل
 تبويب Summary في GitHub Actions يعرض الخطوة الفاشلة والسبب المحتمل وأهم أسطر خطأ Gradle، وسجلات كاملة في Artifact باسم `build-logs`.

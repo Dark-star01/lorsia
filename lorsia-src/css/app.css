@@ -5,18 +5,26 @@
    قاعدة: لا ألوان حرفية خارج الطبقة 3. الثيم = قيم متغيّرات فقط.
    ========================================================================== */
 
-/* 1) الخطوط (مضمّنة محلياً، بلا تحميل من الإنترنت) */
+/* 1) الخطوط (مضمّنة محلياً، بلا تحميل من الإنترنت) — سجلّ الخطوط في js/ui.js (U.FONTS) */
 @font-face{font-family:"LorsiaNaskh";src:url(../fonts/naskh-400.woff2) format("woff2");font-weight:400;font-display:swap}
 @font-face{font-family:"LorsiaNaskh";src:url(../fonts/naskh-700.woff2) format("woff2");font-weight:700;font-display:swap}
 @font-face{font-family:"LorsiaAmiri";src:url(../fonts/amiri-400.woff2) format("woff2");font-weight:400;font-display:swap}
 @font-face{font-family:"LorsiaAmiri";src:url(../fonts/amiri-700.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"LorsiaDejaVu";src:url(../fonts/dejavu-sans-400.woff) format("woff");font-weight:400;font-display:swap}
+@font-face{font-family:"LorsiaDejaVu";src:url(../fonts/dejavu-sans-700.woff) format("woff");font-weight:700;font-display:swap}
+@font-face{font-family:"LorsiaKufi";src:url(../fonts/kufi-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"LorsiaKufi";src:url(../fonts/kufi-700.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"LorsiaNastaliq";src:url(../fonts/nastaliq-400.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"LorsiaNastaliq";src:url(../fonts/nastaliq-700.woff2) format("woff2");font-weight:700;font-display:swap}
 
 /* 2) متغيّرات البنية — مشتركة بين كل الثيمات */
 :root{
-  --font-ui:"LorsiaNaskh",system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic","Noto Naskh Arabic",sans-serif;
-  --font-lit:"LorsiaAmiri","LorsiaNaskh",Georgia,"Noto Naskh Arabic",serif;   /* للأدب: عناوين الكتب والفصول والكتابة */
-  --font-write:var(--font-lit);
-
+  /* خط التطبيق: متغيّر واحد --font-app يتحكم فيه الإعداد (data-font على <html>).
+     --font-ui و --font-lit و --font-write أسماء قديمة تبقى كلها مرتبطة به حتى لا يتشتت الخط بين الأقسام. */
+  --font-app:"LorsiaNaskh",system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic","Noto Naskh Arabic","LorsiaDejaVu",sans-serif;
+  --font-ui:var(--font-app);
+  --font-lit:var(--font-app);
+  --font-write:var(--font-app);
   --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:20px;--s6:28px;--s7:40px;
   --r-sm:8px;--r-md:12px;--r-lg:18px;--r-pill:999px;
 
@@ -35,6 +43,14 @@
 }
 
 /* 3) متغيّرات المظهر — كل ثيم يعيد تعريفها فقط */
+/* سجلّ الخطوط: كل خط يضبط --font-app فقط. ملاحظة: ملفات نسخ وأميري المضمّنة مجموعات جزئية للعربية بلا حروف لاتينية،
+   فاللاتينية والترقيم ينزلان تلقائياً إلى خط النظام ثم DejaVu المضمّن كشبكة أمان. */
+[data-font=naskh]{--font-app:"LorsiaNaskh",system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic","Noto Naskh Arabic","LorsiaDejaVu",sans-serif}
+[data-font=amiri]{--font-app:"LorsiaAmiri","LorsiaNaskh",Georgia,"Noto Naskh Arabic","LorsiaDejaVu",serif}
+[data-font=dejavu]{--font-app:"LorsiaDejaVu","LorsiaNaskh","LorsiaAmiri",system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic",sans-serif}
+[data-font=kufi]{--font-app:"LorsiaKufi","LorsiaNaskh","LorsiaDejaVu",system-ui,sans-serif}
+[data-font=nastaliq]{--font-app:"LorsiaNastaliq","LorsiaNaskh","LorsiaDejaVu",serif}
+
 [data-theme=modern]{
   --bg:#f3f5f9;--surface:#fff;--surface2:#ebeef5;--text:#1b2230;--muted:#5b6578;--border:#dde2ec;
   --accent:#2f6fed;--on-accent:#fff;--danger:#c93636;--ok:#1f7a4d;--focus:#2f6fed;--sel:rgba(47,111,237,.25);
@@ -77,6 +93,18 @@
   --sh-note:0 1px 1px rgba(var(--sh-rgb),.12),0 6px 14px rgba(var(--sh-rgb),.12);
   --hover:rgba(var(--sh-rgb),.06);--active:rgba(var(--sh-rgb),.12);
 }
+
+/* بطاقات اختيار الخط (إعدادات) */
+.fonts{display:grid;gap:var(--s2);margin-bottom:var(--s3)}
+.fopt{display:flex;flex-direction:column;gap:2px;padding:var(--s3);border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);cursor:pointer;min-height:var(--tap);position:relative}
+.fopt input{position:absolute;opacity:0;pointer-events:none}
+.fopt.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--sel)}
+.fopt:focus-within{outline:2px solid var(--focus);outline-offset:2px}
+.fopt .fname{font-weight:700;font-size:var(--fs-sm);color:var(--muted)}
+.fopt .fprev{font-size:var(--fs-lg);line-height:1.7;unicode-bidi:plaintext}
+.fopt[data-font=naskh] .fprev{font-family:"LorsiaNaskh",var(--font-app)}
+.fopt[data-font=amiri] .fprev{font-family:"LorsiaAmiri",var(--font-app)}
+.fopt[data-font=dejavu] .fprev{font-family:"LorsiaDejaVu",var(--font-app)}.fopt[data-font=kufi] .fprev{font-family:"LorsiaKufi",var(--font-app)} .fopt[data-font=nastaliq] .fprev{font-family:"LorsiaNastaliq",var(--font-app)}
 
 /* 4) الأساس */
 [hidden]{display:none!important}

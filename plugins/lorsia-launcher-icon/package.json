@@ -1,0 +1,11 @@
+{
+  "name": "lorsia-launcher-icon",
+  "version": "1.0.0",
+  "description": "تبديل أيقونة المشغّل (أندرويد) حسب الثيم عبر activity-alias — لا يغيّر appId ولا يضيف اختصارات مكررة",
+  "files": ["android/"],
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  }
+}

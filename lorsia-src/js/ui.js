@@ -142,8 +142,29 @@
     snow: { name: 'ثلج', desc: 'أبيض جليدي بلمسة شتوية', accent: '#2478bd', swatches: ['#2478bd', '#4a6fb0', '#1f8f9e', '#6a5ac8'] },
     night: { name: 'ليل', desc: 'داكن مريح للعين', accent: '#8ab4ff', swatches: ['#8ab4ff', '#c4a3ff', '#7fd6b5', '#ffb27a'] }
   };
+
+  /* ---------- خط التطبيق (إعداد واحد عام) ----------
+     المعرّفات ثابتة وتُحفظ في الإعدادات. كل خط معرَّف في css/app.css بقاعدة [data-font=<id>].
+     لإضافة خط: ملفات في fonts/ + @font-face + قاعدة [data-font] + سطر هنا + توثيقه في FONTS.md. */
+  U.FONTS = {
+    naskh: { name: 'نسخ', latin: 'Noto Naskh Arabic', family: '"LorsiaNaskh"' },
+    amiri: { name: 'أميري', latin: 'Amiri', family: '"LorsiaAmiri"' },
+    dejavu: { name: 'ديفاجو', latin: 'DejaVu Sans', family: '"LorsiaDejaVu"' },
+    kufi: { name: 'كوفي', latin: 'Noto Kufi Arabic', family: '"LorsiaKufi"' },
+    nastaliq: { name: 'نستعليق (أردو)', latin: 'Noto Nastaliq Urdu', family: '"LorsiaNastaliq"' }
+  };
+  U.DEFAULT_FONT = 'naskh';
+  U.FONT_KEY = 'lorsia-font'; // نسخة في localStorage لتطبيق الخط قبل أول رسم فقط؛ المصدر الأصلي هو إعدادات IndexedDB
+  U.applyFont = function (id) {
+    var f = U.FONTS[id] ? id : U.DEFAULT_FONT, r = document.documentElement;
+    if (r.getAttribute('data-font') !== f) r.setAttribute('data-font', f); // تغيير سمة واحدة فقط: لا إعادة رسم للشاشة ولا لمس للمحرر
+    try { localStorage.setItem(U.FONT_KEY, f); } catch (e) { /* التخزين قد يكون معطّلاً */ }
+    return f;
+  };
+
   U.applyTheme = function (S) {
     var r = document.documentElement;
+    U.applyFont(S.font);
     var t = U.THEMES[S.theme] ? S.theme : 'modern';
     if (r.getAttribute('data-theme') && r.getAttribute('data-theme') !== t) {
       r.classList.add('theme-anim'); clearTimeout(U._ta); U._ta = setTimeout(function () { r.classList.remove('theme-anim'); }, 420);
@@ -167,6 +188,7 @@
       if (a.dens) r.setAttribute('data-dens', a.dens);
       if (a.card) r.setAttribute('data-card', a.card);
     }
+    if (U.syncLauncherIcon) U.syncLauncherIcon(t);
     var meta = document.querySelector('meta[name=theme-color]');
     if (meta) setTimeout(function () { meta.content = getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#ffffff'; }, 20);
   };

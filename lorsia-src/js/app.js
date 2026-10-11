@@ -6,7 +6,7 @@
   var viewEl, topEl, navEl, titleEl, backEl;
 
   var DEFAULTS = {
-    theme: 'modern', cols: 1, sort: 'updated',
+    theme: 'modern', font: 'naskh', cols: 1, sort: 'updated',
     adv: { on: false, accent: '', hdr: '', dens: '', card: '', edSize: 19, edLh: 1.9 },
     dash: { order: ['continue', 'stats', 'chapters', 'chars', 'ideas', 'world', 'activity'], hidden: [] }
   };
@@ -598,13 +598,23 @@
     var est = null; try { est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null; } catch (e) { /* */ }
     var persisted = null; try { persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : null; } catch (e) { /* */ }
     var books = await DB.all('books');
-    viewEl.innerHTML = '<div class="page narrow"><section class="sec"><h4>المكتبة</h4>' +
+    var curFont = U.FONTS[S.font] ? S.font : U.DEFAULT_FONT;
+    var fontList = Object.keys(U.FONTS).map(function (k) {
+      return '<label class="fopt' + (k === curFont ? ' on' : '') + '" data-font="' + k + '"><input type="radio" name="appFont" value="' + k + '"' + (k === curFont ? ' checked' : '') + '><span class="fname">' + (U.FONTS[k].name ? esc(U.FONTS[k].name) + ' · ' : '') + '<bdi dir="ltr">' + esc(U.FONTS[k].latin) + '</bdi></span><span class="fprev" aria-hidden="true">لورسيا — «كان يا ما كان»، ١٢٣ 456 Lorsia ؟!</span></label>';
+    }).join('');
+    viewEl.innerHTML = '<div class="page narrow"><section class="sec"><h4>خط التطبيق</h4><div class="fonts" role="radiogroup" aria-label="خط التطبيق">' + fontList + '</div><p class="muted sm">يُطبَّق الخط المختار على كل التطبيق (الواجهة والمحرر والقراءة). لا يغيّر نصوصك المحفوظة.</p></section>' +
+      '<section class="sec"><h4>المكتبة</h4>' +
       '<label class="fld"><span>نمط عرض بطاقات الكتب</span><select id="sCols"><option value="1">بطاقة في كل صف</option><option value="2">بطاقتان في الصف</option></select></label>' +
       '<label class="fld"><span>ترتيب الكتب</span><select id="sSort"><option value="updated">الأحدث تعديلاً</option><option value="title">الاسم</option><option value="created">الأحدث إنشاءً</option></select></label></section>' +
       '<section class="sec"><h4>التخزين</h4><p class="muted sm">الكتب المخزنة: ' + books.length + '<br>المساحة المستخدمة: ' + (est && est.usage != null ? (est.usage / 1048576).toFixed(2) + ' م.ب' : 'غير متاح') + '<br>تخزين دائم: ' + (persisted === true ? 'مفعّل' : persisted === false ? 'غير مفعّل (يُنصح بنسخة احتياطية دورية)' : 'غير معروف') + '</p>' +
       '<p class="muted sm">بياناتك محفوظة على هذا الجهاز فقط. صدّر نسخة احتياطية بانتظام من صفحة «النسخ الاحتياطي».</p></section>' +
       '<section class="sec"><a class="btn" href="#/themes">الثيمات والمظهر</a> <a class="btn" href="#/backup">النسخ الاحتياطي والاستيراد</a></section></div>';
     $('#sCols').value = String(S.cols); $('#sSort').value = S.sort;
+    viewEl.onchange = function (e) {
+      var r = e.target; if (!r || r.name !== 'appFont') return;
+      S.font = r.value; saveSettings(); // تبديل data-font فقط؛ بلا إعادة رسم الشاشة
+      Array.prototype.forEach.call(viewEl.querySelectorAll('.fopt'), function (l) { l.classList.toggle('on', l.dataset.font === S.font); });
+    };
     $('#sCols').onchange = function (e) { S.cols = +e.target.value; saveSettings(); };
     $('#sSort').onchange = function (e) { S.sort = e.target.value; saveSettings(); };
   }
