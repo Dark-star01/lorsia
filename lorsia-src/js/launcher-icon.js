@@ -6,11 +6,13 @@
 (function () {
   'use strict';
   var U = window.LUI; if (!U) return;
-  var wanted = null, applied = null, inflight = false;
+  var wanted = null, applied = null, inflight = false, plug = null;
 
   function plugin() {
     var C = window.Capacitor;
-    return (C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.LorsiaLauncherIcon) || null;
+    if (!(C && C.isNativePlatform && C.isNativePlatform())) return null;
+    // Capacitor 3+: الأحدث يمرّ عبر registerPlugin؛ نحتفظ بالمسار القديم Plugins.* احتياطاً
+    return (C.Plugins && C.Plugins.LorsiaLauncherIcon) || (C.registerPlugin ? (plug || (plug = C.registerPlugin('LorsiaLauncherIcon'))) : null);
   }
   function flush() {
     var p = plugin();
@@ -20,6 +22,7 @@
       if (r && r.supported === false) { applied = t; return; } // هذا البناء بلا أيقونات بديلة: لا نكرّر المحاولة
       applied = t;
     }).catch(function (e) {
+      if (e && (e.code === 'UNIMPLEMENTED' || /not implemented/i.test(e.message || ''))) { applied = t; return; } // البناء بلا البلاجن: لا تكرار
       if (window.console) console.warn('launcher icon:', e && e.message ? e.message : e);
     }).then(function () { inflight = false; if (wanted !== applied && document.visibilityState === 'hidden') flush(); });
   }

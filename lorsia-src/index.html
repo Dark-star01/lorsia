@@ -5,10 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
 <title>لورسيا</title>
-<script>try{var f=localStorage.getItem('lorsia-font');if(f&&/^[a-z0-9_-]+$/.test(f))document.documentElement.setAttribute('data-font',f)}catch(e){}</script>
+<script>try{var f=localStorage.getItem('lorsia-font');if(f&&/^[a-z0-9_-]+$/.test(f))document.documentElement.setAttribute('data-font',f);var th=localStorage.getItem('lorsia-theme');if(th&&/^(modern|library|snow|night)$/.test(th))document.documentElement.setAttribute('data-theme',th)}catch(e){}</script>
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
+<div id="sky" aria-hidden="true"><i class="stars"></i><i class="lines a"></i><i class="lines b"></i></div>
 <header id="top">
   <button class="icon-btn" id="menuBtn" aria-label="القائمة"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <button class="icon-btn" id="backBtn" aria-label="رجوع" hidden><svg class="ic" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>

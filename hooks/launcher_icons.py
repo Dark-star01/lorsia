@@ -25,7 +25,7 @@ THEMES = [
     ('modern', 'Light / Day', '#f3f5f9'),
     ('library', 'Library', '#efe6d0'),
     ('snow', 'Snow', '#e8f2fb'),
-    ('night', 'Dark / Night', '#12151c'),
+    ('night', 'Dark / Night', '#08090D'),
 ]
 DEFAULT_THEME = 'modern'  # الـalias المفعّل افتراضياً (الثيم الافتراضي للتطبيق)
 # كثافة -> (حجم الأيقونة الكلاسيكية px = 48dp, حجم foreground الـadaptive px = 108dp)

@@ -36,7 +36,7 @@ B) RECOMMENDED per theme — adaptive icon foreground (Android 8+), file `ic_lau
 `mipmap-mdpi` 108×108, `hdpi` 162×162, `xhdpi` 216×216, `xxhdpi` 324×324, `xxxhdpi` 432×432.
 Keep the artwork inside the central 66dp circle (61% of the canvas); the outer 18dp per side can be masked or cropped by the launcher. Without B, Android 8+ shows file A inside the launcher's own backing shape.
 
-C) OPTIONAL per theme — adaptive background, file `ic_launcher_<id>_background.png`, same sizes as B, fully opaque. If absent, a solid color is used (generated `res/values/lorsia_launcher_colors.xml`): modern `#f3f5f9`, library `#efe6d0`, snow `#e8f2fb`, night `#12151c` (the themes' background colors; change them in `hooks/launcher_icons.py` THEMES if you want others).
+C) OPTIONAL per theme — adaptive background, file `ic_launcher_<id>_background.png`, same sizes as B, fully opaque. If absent, a solid color is used (generated `res/values/lorsia_launcher_colors.xml`): modern `#f3f5f9`, library `#efe6d0`, snow `#e8f2fb`, night `#08090D` (the themes' background colors; change them in `hooks/launcher_icons.py` THEMES if you want others).
 
 Counts: 20 classic PNG icons are included (4 themes × 5 densities). Original artwork is preserved in `assets/launcher-icons-source/`. Adaptive foreground PNGs are not included because the supplied images are opaque full-square artwork; Android will use the generated solid-color adaptive background unless transparent foreground art is added later. With recommended foregrounds = 40; with optional backgrounds = 60. Example for Night:
 `mipmap-xxxhdpi/ic_launcher_night.png` (192), `mipmap-xxxhdpi/ic_launcher_night_foreground.png` (432), `mipmap-xxxhdpi/ic_launcher_night_background.png` (432, optional).

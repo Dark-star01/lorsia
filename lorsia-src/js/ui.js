@@ -34,7 +34,7 @@
     t.textContent = msg;
     t.className = 'show ' + (kind || '');
     clearTimeout(toastT);
-    toastT = setTimeout(function () { t.className = ''; }, kind === 'err' ? 5200 : 2600);
+    toastT = setTimeout(function () { t.className = ''; }, kind === 'err' ? 5200 : kind === 'warn' ? 4200 : 2600); // kind: '' | 'warn' | 'err'
   };
 
   function modal(build) {
@@ -58,7 +58,7 @@
       build(box, close);
       root.appendChild(wrap);
       var f = box.querySelector('[autofocus],input,textarea,select');
-      if (f) setTimeout(function () { try { f.focus(); } catch (e) { /* */ } }, 30);
+      if (f) setTimeout(function () { try { f.focus({ preventScroll: true }); box.scrollTop = 0; } catch (e) { /* */ } }, 30); // بلا تمرير: يبقى عنوان النافذة ظاهراً
     });
   }
   U.modal = modal;
@@ -67,8 +67,20 @@
     o = o || {};
     return modal(function (box, close) {
       box.innerHTML = '<h3>' + U.esc(o.title || 'تأكيد') + '</h3><p class="mm">' + U.esc(msg) + '</p>' +
-        '<div class="mrow"><button class="btn ' + (o.danger ? 'danger' : 'primary') + '" data-ok>' + U.esc(o.ok || 'تأكيد') + '</button><button class="btn" data-no>إلغاء</button></div>';
+        '<div class="mrow"><button class="btn ' + (o.danger ? 'danger' : 'primary') + '" data-ok>' + U.esc(o.ok || 'تأكيد') + '</button><button class="btn" data-no' + (o.danger ? ' autofocus' : '') + '>إلغاء</button></div>';
       box.querySelector('[data-ok]').onclick = function () { close(true); };
+      box.querySelector('[data-no]').onclick = function () { close(false); };
+    }).then(function (v) { return v === true; });
+  };
+
+  // خطأ مهم: نافذة واضحة (لا تعتمد على اللون وحده) مع «إعادة المحاولة» عند الإمكان. ترجع true إن اختار المستخدم المحاولة.
+  U.alertErr = function (title, msg, o) {
+    o = o || {};
+    return modal(function (box, close) {
+      box.setAttribute('role', 'alertdialog');
+      box.innerHTML = '<h3 class="err-h">' + U.esc(title) + '</h3><p class="mm pre">' + U.esc(msg) + '</p><div class="mrow">' +
+        (o.retry ? '<button class="btn primary" data-ok>' + U.esc(o.retry) + '</button>' : '') + '<button class="btn" data-no autofocus>' + U.esc(o.close || 'إغلاق') + '</button></div>';
+      var ok = box.querySelector('[data-ok]'); if (ok) ok.onclick = function () { close(true); };
       box.querySelector('[data-no]').onclick = function () { close(false); };
     }).then(function (v) { return v === true; });
   };
@@ -140,7 +152,7 @@
     modern: { name: 'عصري', desc: 'نظيف وحديث بورق أبيض', accent: '#2f6fed', swatches: ['#2f6fed', '#0b7f70', '#7a3fe8', '#c63a31'] },
     library: { name: 'مكتبة', desc: 'ورق عاجي كدفاتر الكتب', accent: '#8a5a2b', swatches: ['#8a5a2b', '#9c3d3d', '#3f6b4f', '#4d5b8c'] },
     snow: { name: 'ثلج', desc: 'أبيض جليدي بلمسة شتوية', accent: '#2478bd', swatches: ['#2478bd', '#4a6fb0', '#1f8f9e', '#6a5ac8'] },
-    night: { name: 'ليل', desc: 'داكن مريح للعين', accent: '#8ab4ff', swatches: ['#8ab4ff', '#c4a3ff', '#7fd6b5', '#ffb27a'] }
+    night: { name: 'ليل', desc: 'سماء هادئة بفضّة قمرية', accent: '#C6CAD6', swatches: ['#C6CAD6', '#C4B8E8', '#8880AC', '#6FD39A'] }
   };
 
   /* ---------- خط التطبيق (إعداد واحد عام) ----------
@@ -167,9 +179,10 @@
     U.applyFont(S.font);
     var t = U.THEMES[S.theme] ? S.theme : 'modern';
     if (r.getAttribute('data-theme') && r.getAttribute('data-theme') !== t) {
-      r.classList.add('theme-anim'); clearTimeout(U._ta); U._ta = setTimeout(function () { r.classList.remove('theme-anim'); }, 420);
+      r.classList.add('theme-anim'); clearTimeout(U._ta); U._ta = setTimeout(function () { r.classList.remove('theme-anim'); }, 340);
     }
     r.setAttribute('data-theme', t);
+    try { localStorage.setItem('lorsia-theme', t); } catch (e) { /* نسخة للتطبيق قبل أول رسم فقط؛ المصدر الأصلي إعدادات IndexedDB */ }
     var a = S.adv || {};
     var on = !!a.on;
     ['--accent', '--on-accent', '--ed-size', '--ed-lh'].forEach(function (p) { r.style.removeProperty(p); });
@@ -192,6 +205,9 @@
     var meta = document.querySelector('meta[name=theme-color]');
     if (meta) setTimeout(function () { meta.content = getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#ffffff'; }, 20);
   };
+
+  // إيقاف الحركة غير الأساسية (النجوم) حين تُخفى الصفحة/التطبيق
+  document.addEventListener('visibilitychange', function () { document.documentElement.classList.toggle('page-hidden', document.hidden); });
 
   window.LUI = U;
 })();

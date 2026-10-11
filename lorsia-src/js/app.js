@@ -41,7 +41,7 @@
   };
   function hue(str) { var h = 0; str = String(str || ''); for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360; return h; }
   function initial(str) { var t = String(str || '').trim(); return t ? Array.from(t)[0] : '؟'; }
-  function cover(title, cls) { return '<div class="cover ' + (cls || '') + '" style="--h:' + hue(title) + '" aria-hidden="true"><span class="ct">' + esc(title) + '</span><i class="orn"></i></div>'; }
+  function cover(title, cls) { return '<div class="cover ' + (cls || '') + '" style="--h:' + hue(title) + '" aria-hidden="true"><span class="ct">' + esc(title) + '</span><i class="orn"></i><i class="co tl"></i><i class="co tr"></i><i class="co bl"></i><i class="co br"></i></div>'; }
   function ic(n, c) { return '<svg class="ic ' + (c || '') + '" viewBox="0 0 24 24" aria-hidden="true">' + I[n] + '</svg>'; }
 
   /* ---------- الإعدادات ---------- */
@@ -107,6 +107,8 @@
     var HK = { home: 'dashboard', chapters: 'chapters', c: 'editor', chars: 'chars', ideas: 'ideas', world: 'world' };
     helpKey = p[0] === 'b' ? (HK[p[2] || 'home'] || '') : (({ settings: 'settings', themes: 'themes', backup: 'backup' })[p[0]] || ((!p.length || p[0] === 'lib') ? 'library' : ''));
     window.scrollTo(0, 0);
+    // السماء الزخرفية (ثيم الليل فقط) تظهر في المكتبة ولوحة الكتاب؛ لا تظهر في المحرر ولا غيره
+    document.body.classList.toggle('sky-on', !p.length || p[0] === 'lib' || (p[0] === 'b' && !!p[1] && (!p[2] || p[2] === 'home')));
     if (!p.length || p[0] === 'lib') return vLibrary();
     if (p[0] === 'settings') return vSettings();
     if (p[0] === 'themes') return vThemes();
@@ -311,7 +313,8 @@
     if (!chs.length) { el.className = 'stack'; el.innerHTML = '<div class="empty">' + ic('feather', 'big') + '<h3>لا توجد فصول</h3><p>أنشئ أول فصل وابدأ الكتابة.</p></div>'; }
     else el.innerHTML = chs.map(function (c, i) {
       var w = c.words || 0, pct = w ? Math.max(3, Math.round(w / maxW * 100)) : 0;
-      return '<article class="card chap" data-id="' + c.id + '" style="--i:' + i + '"><a class="cb" href="#/b/' + book.id + '/c/' + c.id + '"><div class="num">' + (i + 1) + '</div><div class="grow"><h3>' + esc(c.title) + '</h3><div class="meta sm">' + U.num(w) + ' كلمة · ' + U.date(c.updated) + '</div><div class="bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div></div></a>' +
+      var cur = c.id === book.lastChapterId;
+      return '<article class="card chap' + (cur ? ' cur' : '') + '" data-id="' + c.id + '" style="--i:' + i + '"' + (cur ? ' aria-current="true"' : '') + '>' + (cur ? '<i class="seal-mark" aria-hidden="true"></i>' : '') + '<a class="cb" href="#/b/' + book.id + '/c/' + c.id + '"><div class="num">' + (i + 1) + '</div><div class="grow"><h3>' + esc(c.title) + (cur ? ' <span class="vh">(الفصل الحالي)</span>' : '') + '</h3><div class="meta sm">' + U.num(w) + ' كلمة · ' + U.date(c.updated) + '</div><div class="bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div></div></a>' +
         '<div class="acts"><button class="icon-btn" data-a="up" ' + (i === 0 ? 'disabled' : '') + ' aria-label="تحريك للأعلى" title="للأعلى">' + ic('up') + '</button><button class="icon-btn" data-a="down" ' + (i === chs.length - 1 ? 'disabled' : '') + ' aria-label="تحريك للأسفل" title="للأسفل">' + ic('down') + '</button><button class="icon-btn" data-a="ren" aria-label="إعادة تسمية" title="إعادة تسمية">' + ic('edit') + '</button><button class="icon-btn danger" data-a="del" aria-label="حذف" title="حذف">' + ic('trash') + '</button></div></article>';
     }).join('');
     $('#newCh').onclick = function () { newChapter(book); };
@@ -342,7 +345,7 @@
     setChrome({ title: ch.title, back: '#/b/' + book.id + '/chapters', book: null });
     document.body.classList.add('in-editor');
     viewEl.innerHTML =
-      '<div class="editor"><div class="etools"><span id="st" class="st saved">تم الحفظ</span><span id="wc" class="wc"></span><span class="grow"></span>' +
+      '<div class="editor"><div class="etools"><span id="st" class="st saved" role="status" aria-live="polite"></span><button class="btn sm retry" id="stRetry" hidden>إعادة المحاولة</button><span id="wc" class="wc"></span><span class="grow"></span>' +
       '<button class="icon-btn" id="notesBtn" aria-label="ملاحظات الفصل" title="ملاحظات الفصل">' + ic('note') + '</button>' +
       '<button class="icon-btn" id="focusBtn" aria-label="وضع بلا مشتتات" title="وضع بلا مشتتات">' + ic('focus') + '</button>' +
       '<button class="icon-btn" id="expBtn" aria-label="تصدير الفصل" title="تصدير الفصل">' + ic('exp') + '</button></div>' +
@@ -358,12 +361,18 @@
       id: cid, text: ta.value, notes: nta.value, pos: ch.pos || { sel: 0, scroll: 0 },
       dirty: false, nDirty: false, pDirty: false, state: 'saved', timer: null, q: Promise.resolve(), failed: false
     };
+    var stRetry = $('#stRetry');
     function setState(s) {
       E.state = s;
       st.className = 'st ' + s;
       if (s === 'saved') { void st.offsetWidth; st.classList.add('pop'); }
-      st.textContent = s === 'saving' ? 'جارٍ الحفظ…' : s === 'saved' ? 'تم الحفظ' : s === 'error' ? 'تعذّر الحفظ' : 'غير محفوظ';
+      // «تم الحفظ» أيقونة صغيرة فقط (نصها للقارئ الآلي)؛ الفشل يُصرَّح به نصاً ولا يُعرض «محفوظ» زوراً
+      st.innerHTML = s === 'saved' ? ic('check') + '<span class="vh">تم الحفظ</span>' : '';
+      if (s !== 'saved') st.textContent = s === 'saving' ? 'جارٍ الحفظ…' : s === 'error' ? 'تعذّر الحفظ — نصك ما زال هنا' : 'غير محفوظ';
+      st.title = s === 'saved' ? 'تم الحفظ' : '';
+      stRetry.hidden = s !== 'error';
     }
+    setState('saved');
     function doSave() {
       if (!E.dirty && !E.nDirty && !E.pDirty) return Promise.resolve();
       var patch = { pos: E.pos }, d = E.dirty, n = E.nDirty;
@@ -374,14 +383,17 @@
         E.failed = false;
         setState(E.dirty || E.nDirty ? 'dirty' : 'saved');
       }, function (err) {
+        var wasErr = E.failed;
         if (d) E.dirty = true; if (n) E.nDirty = true; E.pDirty = true; E.failed = true;
         setState('error');
-        U.toast('تعذّر حفظ الفصل: ' + (err && err.message || err), 'err');
+        if (!wasErr) U.toast('تعذّر حفظ الفصل: ' + (err && err.message || err) + '. نصك محفوظ في الشاشة، اضغط «إعادة المحاولة».', 'err'); // مرة واحدة لا مع كل محاولة
+        if (!E.dead) sched(10000); // محاولة تلقائية لاحقة؛ تبقى الحالة «تعذّر الحفظ» حتى ينجح الحفظ فعلاً
       });
     }
     function enqueue() { E.q = E.q.then(doSave); return E.q; }
     function sched(ms) { clearTimeout(E.timer); E.timer = setTimeout(enqueue, ms); }
     E.flush = function () { clearTimeout(E.timer); return enqueue(); };
+    stRetry.onclick = function () { E.flush(); };
     E.hasUnsaved = function () { return E.dirty || E.nDirty; };
     var wcT = null;
     function updWc() { wc.textContent = U.num(DB.words(E.text)) + ' كلمة'; }
@@ -405,6 +417,7 @@
     window.addEventListener('blur', onBlurWin);
     ta.addEventListener('blur', onBlurWin); nta.addEventListener('blur', onBlurWin);
     E.destroy = function () {
+      E.dead = true; clearTimeout(E.timer);
       document.removeEventListener('visibilitychange', onHide);
       window.removeEventListener('pagehide', onBlurWin); window.removeEventListener('blur', onBlurWin);
     };
@@ -579,7 +592,10 @@
             if (!a) return;
             if (a === 'move') {
               var t = await U.form('نقل العناصر', [{ k: 'to', label: 'انقل إلى', type: 'select', options: others.map(function (c) { return { v: c.id, l: c.name }; }) }], { to: others[0].id }, { ok: 'نقل وحذف' });
-              if (!t) return; await DB.deleteCat(cur, t.to);
+              if (!t) return;
+              var dest = others.filter(function (c) { return c.id === t.to; })[0];
+              if (!(await U.confirm('سيُحذف التصنيف «' + cur.name + '» نهائياً بعد نقل عناصره الـ' + n + ' إلى «' + (dest ? dest.name : '') + '».', { danger: true, ok: 'حذف التصنيف', title: 'تأكيد الحذف' }))) return;
+              await DB.deleteCat(cur, t.to);
             } else {
               if (!(await U.confirm('سيُحذف التصنيف وعناصره الـ' + n + ' نهائياً.', { danger: true, ok: 'حذف الكل', title: 'تأكيد أخير' }))) return;
               await DB.deleteCat(cur, null);
@@ -600,7 +616,7 @@
     var books = await DB.all('books');
     var curFont = U.FONTS[S.font] ? S.font : U.DEFAULT_FONT;
     var fontList = Object.keys(U.FONTS).map(function (k) {
-      return '<label class="fopt' + (k === curFont ? ' on' : '') + '" data-font="' + k + '"><input type="radio" name="appFont" value="' + k + '"' + (k === curFont ? ' checked' : '') + '><span class="fname">' + (U.FONTS[k].name ? esc(U.FONTS[k].name) + ' · ' : '') + '<bdi dir="ltr">' + esc(U.FONTS[k].latin) + '</bdi></span><span class="fprev" aria-hidden="true">لورسيا — «كان يا ما كان»، ١٢٣ 456 Lorsia ؟!</span></label>';
+      return '<label class="fopt' + (k === curFont ? ' on' : '') + '" data-font="' + k + '"><input type="radio" name="appFont" value="' + k + '"' + (k === curFont ? ' checked' : '') + '><span class="fname">' + (U.FONTS[k].name ? esc(U.FONTS[k].name) + ' · ' : '') + '<bdi dir="ltr">' + esc(U.FONTS[k].latin) + '</bdi></span><span class="fprev" style="--pf:' + U.FONTS[k].family + ',var(--font-app)" aria-hidden="true">لورسيا — «كان يا ما كان»، ١٢٣ 456 Lorsia ؟!</span></label>';
     }).join('');
     viewEl.innerHTML = '<div class="page narrow"><section class="sec"><h4>خط التطبيق</h4><div class="fonts" role="radiogroup" aria-label="خط التطبيق">' + fontList + '</div><p class="muted sm">يُطبَّق الخط المختار على كل التطبيق (الواجهة والمحرر والقراءة). لا يغيّر نصوصك المحفوظة.</p></section>' +
       '<section class="sec"><h4>المكتبة</h4>' +
@@ -670,15 +686,18 @@
     setChrome({ title: 'النسخ الاحتياطي', back: '#/' });
     viewEl.innerHTML = '<div class="page narrow"><section class="sec"><h4>تصدير نسخة احتياطية</h4><p class="muted sm">ملف JSON واحد يضم كل كتبك: الفصول والملاحظات والشخصيات والأفكار والعالم والإعدادات ومواضع الكتابة.</p><button class="btn primary" id="bkExp">تصدير نسخة احتياطية</button></section>' +
       '<section class="sec"><h4>استيراد نسخة احتياطية</h4><p class="muted sm">يُفحص الملف أولاً، ولا يُغيَّر شيء قبل تأكيدك.</p><button class="btn" id="bkImp">اختيار ملف نسخة احتياطية</button><input type="file" id="bkFile" accept=".json,application/json,text/plain" hidden><div id="bkMsg" class="muted sm pad"></div></section></div>';
-    $('#bkExp').onclick = async function () {
+    async function doExport() {
       try {
         var data = await DB.exportAll();
         var d = new Date(), p2 = function (n) { return String(n).padStart(2, '0'); };
         var name = 'lorsia-backup-' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '-' + p2(d.getHours()) + p2(d.getMinutes()) + '.json';
         var r = await X.saveFile(name, 'application/json', new TextEncoder().encode(JSON.stringify(data)));
         if (r.ok) U.toast('تم تصدير النسخة الاحتياطية (' + data.books.length + ' كتاب)');
-      } catch (e) { U.toast('تعذّر التصدير: ' + (e && e.message || e), 'err'); }
-    };
+      } catch (e) {
+        if (await U.alertErr('تعذّر تصدير النسخة', (e && e.message || e) + '\nلم يتغيّر شيء في بياناتك.', { retry: 'إعادة المحاولة' })) return doExport();
+      }
+    }
+    $('#bkExp').onclick = doExport;
     $('#bkImp').onclick = function () { $('#bkFile').value = ''; $('#bkFile').click(); };
     $('#bkFile').onchange = async function (e) {
       var f = e.target.files && e.target.files[0]; if (!f) return;
@@ -686,21 +705,37 @@
       var msg = $('#bkMsg'); msg.innerHTML = '';
       function say(kind, html) { msg.innerHTML = '<div class="msg ' + kind + '">' + ic(kind === 'bad' ? 'warn' : 'check', 'sm') + '<div>' + html + '</div></div>'; }
       var data;
-      try { data = JSON.parse(await f.text()); } catch (er) { say('bad', 'الملف تالف أو ليس JSON صالحاً. لم يتغيّر شيء.'); return U.toast('الملف تالف', 'err'); }
+      try { data = JSON.parse(await f.text()); } catch (er) { say('bad', 'الملف تالف أو ليس JSON صالحاً. لم يتغيّر شيء.'); return U.alertErr('تعذّر قراءة الملف', 'الملف تالف أو ليس JSON صالحاً. أُلغيت العملية ولم يتغيّر شيء في بياناتك.'); }
       var errs = DB.validateBackup(data);
-      if (errs.length) { say('bad', 'تعذّر الاستيراد، لم يتغيّر شيء:<br>' + errs.map(esc).join('<br>')); return U.toast('ملف النسخة غير صالح', 'err'); }
-      var sum = data.books.length + ' كتاب، ' + data.chapters.length + ' فصل، ' + data.characters.length + ' شخصية، ' + data.ideas.length + ' فكرة، ' + data.items.length + ' عنصر عالم';
-      var mode = await U.choice('استيراد النسخة', 'الملف سليم ويحتوي: ' + sum + '. كيف تريد الاستيراد؟', [
-        { v: 'merge', label: 'دمج مع بياناتي الحالية (آمن)', cls: 'primary' },
-        { v: 'replace', label: 'استبدال كل بياناتي الحالية', cls: 'danger' }]);
+      if (errs.length) { say('bad', 'تعذّر الاستيراد، لم يتغيّر شيء:<br>' + errs.map(esc).join('<br>')); return U.alertErr('ملف النسخة غير صالح', 'أُلغيت العملية ولم يتغيّر شيء في بياناتك.\n' + errs.join('\n')); }
+      var cur = {}, names = ['books', 'chapters', 'characters', 'ideas', 'items', 'cats'];
+      for (var i = 0; i < names.length; i++) cur[names[i]] = await DB.all(names[i]);
+      var have = {}; cur.books.forEach(function (b) { have[b.id] = true; });
+      var dupes = data.books.filter(function (b) { return have[b.id]; }).length;
+      var rows = [['الكتب', 'books'], ['الفصول', 'chapters'], ['الشخصيات', 'characters'], ['الأفكار', 'ideas'], ['عناصر عالم الرواية', 'items'], ['تصنيفات العالم', 'cats']];
+      var exported = data.exported && !isNaN(Date.parse(data.exported)) ? U.date(Date.parse(data.exported)) : 'غير مذكور';
+      var mode = await U.modal(function (box, close) {
+        box.innerHTML = '<h3>معاينة الاستيراد</h3><p class="mm">الملف سليم ولم يُغيَّر شيء بعد. راجع ما سيحدث ثم اختر.</p>' +
+          '<ul class="vlist"><li><span class="k">اسم الملف</span><b dir="auto">' + esc(f.name) + '</b></li><li><span class="k">تاريخ النسخة</span><b>' + esc(exported) + '</b></li></ul>' +
+          '<ul class="vlist"><li><span class="k">السجلات</span><b>في الملف / عندك الآن</b></li>' + rows.map(function (r) { return '<li><span class="k">' + r[0] + '</span><b>' + U.num(data[r[1]].length) + ' / ' + U.num(cur[r[1]].length) + '</b></li>'; }).join('') + '</ul>' +
+          '<p class="mm"><b>دمج:</b> يُضاف ' + U.num(data.books.length - dupes) + ' كتاب جديد' + (dupes ? '، و' + U.num(dupes) + ' كتاب معرّفه موجود عندك يُضاف كنسخة جديدة (لا يُستبدل شيء)' : '') + '. لا يُحذف أي شيء.<br><b>استبدال:</b> يُحذف كل ما عندك الآن ويحل محله محتوى الملف مع إعداداته (الثيم والخط).</p>' +
+          '<div class="mcol"><button class="btn primary" data-m="merge">دمج مع بياناتي الحالية</button><button class="btn danger" data-m="replace">استبدال كل بياناتي…</button><button class="btn" data-m="" autofocus>إلغاء</button></div>';
+        Array.prototype.forEach.call(box.querySelectorAll('[data-m]'), function (b) { b.onclick = function () { close(b.dataset.m || null); }; });
+      });
       if (!mode) return;
-      if (mode === 'replace' && !(await U.confirm('سيُمسح كل ما في لورسيا الآن ويُستبدل بمحتوى الملف. الأفضل تصدير نسخة من بياناتك الحالية أولاً. هل تتابع؟', { title: 'استبدال كامل', danger: true, ok: 'استبدال' }))) return;
-      try {
-        var rep = await DB.importBackup(data, mode);
-        if (mode === 'replace') await loadSettings();
-        say('good', 'تم الاستيراد: ' + rep.books + ' كتاب' + (rep.copies ? ' (منها ' + rep.copies + ' نسخة جديدة لأن معرّفها موجود)' : '') + '.');
-        U.toast('تم الاستيراد بنجاح');
-      } catch (er) { say('bad', 'فشل الاستيراد وأُلغيت العملية كاملة (لم تتغير بياناتك): ' + esc(er && er.message || er)); U.toast('فشل الاستيراد', 'err'); }
+      if (mode === 'replace' && !(await U.confirm('سيُمسح كل ما في لورسيا الآن (' + U.num(cur.books.length) + ' كتاب، ' + U.num(cur.chapters.length) + ' فصل…) ويُستبدل بمحتوى الملف. لا يمكن التراجع. الأفضل تصدير نسخة من بياناتك الحالية أولاً. هل تتابع؟', { title: 'استبدال كامل', danger: true, ok: 'استبدال' }))) return;
+      async function runImport() {
+        try {
+          var rep = await DB.importBackup(data, mode);
+          if (mode === 'replace') await loadSettings();
+          say('good', 'تم الاستيراد: ' + rep.books + ' كتاب' + (rep.copies ? ' (منها ' + rep.copies + ' نسخة جديدة لأن معرّفها موجود)' : '') + '.');
+          U.toast('تم الاستيراد بنجاح');
+        } catch (er) {
+          say('bad', 'فشل الاستيراد وأُلغيت العملية كاملة (لم تتغير بياناتك): ' + esc(er && er.message || er));
+          if (await U.alertErr('فشل الاستيراد', 'أُلغيت العملية كاملة ولم تتغير بياناتك.\n' + (er && er.message || er), { retry: 'إعادة المحاولة' })) return runImport();
+        }
+      }
+      await runImport();
     };
   }
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive-icon background colours (design decision: change freely, or replace the <background> in the
+     mipmap-anydpi-v26 XML with an opaque PNG @mipmap/ic_launcher_<theme>_background). Defaults = each theme's page colour. -->
+<resources>
+    <color name="ic_launcher_modern_background">#F3F5F9</color>
+    <color name="ic_launcher_library_background">#EFE6D0</color>
+    <color name="ic_launcher_snow_background">#E8F2FB</color>
+    <color name="ic_launcher_night_background">#08090D</color>
+</resources>
