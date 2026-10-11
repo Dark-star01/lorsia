@@ -2,6 +2,7 @@
   "appName": "لورسيا",
   "appId": "com.lorsia.app",
   "version": "1.0.0",
+  "capacitorVersion": "7",
   "webZip": "lorsia.zip",
   "env": {
     "enabled": false
