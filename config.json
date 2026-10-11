@@ -1,0 +1,19 @@
+{
+  "appName": "لورسيا",
+  "appId": "com.lorsia.app",
+  "version": "1.0.0",
+  "webZip": "lorsia.zip",
+  "env": {
+    "enabled": false
+  },
+  "splash": {
+    "enabled": true,
+    "duration": 1800,
+    "backgroundColor": "#12151c",
+    "textColor": "#e6e9f0",
+    "accentColor": "#8ab4ff",
+    "subtitle": "",
+    "footer": "by made Dark",
+    "logoFile": "logo.png"
+  }
+}

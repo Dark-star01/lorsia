@@ -1,0 +1,27 @@
+// وحدة مكتبة أندرويد. AGP و Kotlin و darkJava يضيفها APKMaker في build.gradle الجذر.
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+android {
+    namespace "com.lorsia.filesaver"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+    }
+    compileOptions {
+        sourceCompatibility rootProject.ext.darkJava
+        targetCompatibility rootProject.ext.darkJava
+    }
+    kotlinOptions {
+        jvmTarget = rootProject.ext.darkJava.toString()
+    }
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    // ActivityResult يأتي عبر androidx.activity القادم مع appcompat
+    implementation "androidx.appcompat:appcompat:${rootProject.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.0'}"
+}

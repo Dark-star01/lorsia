@@ -1,0 +1,11 @@
+{
+  "name": "lorsia-file-saver",
+  "version": "1.0.0",
+  "description": "حفظ ملفات (PDF/TXT/MD/JSON) من WebView إلى جهاز المستخدم عبر نافذة اختيار الملفات في أندرويد",
+  "files": ["android/"],
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  }
+}
